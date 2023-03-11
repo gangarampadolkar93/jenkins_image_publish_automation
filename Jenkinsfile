@@ -1,36 +1,31 @@
 pipeline {
-environment {
-registry = "gangarampadolkar/gangaram_jenkins_image"
-registryCredential = 'dockerhub_id'
-dockerImage = ''
-}
-agent any
-stages {
-stage('Cloning our Git') {
-steps {
-git 'https://github.com/gangarampadolkar93/jenkins_image_publish_automation.git'
-}
-}
-stage('Building our image') {
-steps{
-script {
-dockerImage = docker.build registry + ":$BUILD_NUMBER"
-}
-}
-}
-stage('Deploy our image') {
-steps{
-script {
-docker.withRegistry( '', registryCredential ) {
-dockerImage.push()
-}
-}
-}
-}
-stage('Cleaning up') {
-steps{
-sh "docker rmi $registry:$BUILD_NUMBER"
-}
-}
-}
-}
+  agent any
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '5'))
+  }
+  environment {
+    DOCKERHUB_CREDENTIALS = credentials('dockerhub')
+  }
+  stages {
+      stage('checkout from scm'){
+          steps{
+               git branch: 'main', url: 'https://github.com/gangarampadolkar93/jenkins_image.git'
+          }
+      }
+    stage('Compile code') {
+      steps {
+        sh 'docker build -t gangarampadolkar/gangaram_jenkins_image .'
+      }
+    }
+    stage('Login to Docker ') {
+      steps {
+        sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+      }
+    }
+    stage('Push to Docker hub') {
+      steps {
+        sh 'docker push gangarampadolkar/gangaram_jenkins_image'
+      }
+    }
+  }
+ }
